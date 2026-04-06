@@ -4,6 +4,7 @@ import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import { invoke } from "@tauri-apps/api/core";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import { useNoteStore } from "../store/note-store";
 import TurndownService from "turndown";
 import { marked } from "marked";
@@ -15,7 +16,18 @@ const turndown = new TurndownService({
 
 /** Convert markdown string to HTML for Tiptap */
 function mdToHtml(md: string): string {
-  return marked.parse(md, { async: false }) as string;
+  let processed = md;
+  // Convert absolute file paths to Tauri asset URLs for display
+  processed = processed.replace(
+    /!\[([^\]]*)\]\((\/.+?)\)/g,
+    (_match, alt, path) => `![${alt}](${convertFileSrc(path)})`
+  );
+  // Convert relative ../assets/ paths — keep as-is since we use absolute paths now
+  processed = processed.replace(
+    /!\[([^\]]*)\]\(\.\.\/(assets\/.+?)\)/g,
+    (_match, alt, relPath) => `![${alt}](${relPath})`
+  );
+  return marked.parse(processed, { async: false }) as string;
 }
 
 /** Convert Tiptap HTML back to markdown for saving */
@@ -53,11 +65,13 @@ export default function Editor() {
             reader.onload = async () => {
               const base64 = reader.result as string;
               try {
-                const path = await invoke<string>("notes_save_image", {
+                const absPath = await invoke<string>("notes_save_image", {
                   data: base64,
                   filename: file.name || "paste.png",
                 });
-                editor?.chain().focus().setImage({ src: path }).run();
+                // Convert absolute path to Tauri asset URL
+                const assetUrl = convertFileSrc(absPath);
+                editor?.chain().focus().setImage({ src: assetUrl }).run();
               } catch {
                 // Fallback: embed as base64 inline
                 editor?.chain().focus().setImage({ src: base64 }).run();

@@ -166,8 +166,8 @@ pub fn notes_save_image(data: String, filename: String) -> Result<String, String
     let mut file = fs::File::create(&full_path).map_err(|e| format!("Cannot create file: {e}"))?;
     file.write_all(&bytes).map_err(|e| format!("Cannot write: {e}"))?;
 
-    // Return path relative to notes dir for markdown embedding
-    Ok(format!("../assets/{name}"))
+    // Return absolute path for Tauri asset protocol
+    Ok(full_path.to_string_lossy().to_string())
 }
 
 /// Simple base64 decoder
