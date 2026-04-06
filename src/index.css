@@ -1,15 +1,54 @@
 @import "tailwindcss";
 
 :root {
-  --sidebar-bg: #1e1e2e;
-  --editor-bg: #181825;
-  --text-primary: #cdd6f4;
-  --text-secondary: #a6adc8;
-  --accent: #89b4fa;
-  --accent-hover: #74c7ec;
-  --border: #313244;
-  --hover-bg: #313244;
-  --selected-bg: #45475a;
+  /* === DESIGN SYSTEM === */
+
+  /* Multi-layer backgrounds (macOS depth) */
+  --bg-base: #0c0e12;
+  --bg-sidebar: #12151c;
+  --bg-surface: #181c27;
+  --bg-elevated: #1e2333;
+
+  /* Text (4 levels) */
+  --text-primary: #eceff6;
+  --text-secondary: rgba(236, 239, 246, 0.55);
+  --text-tertiary: rgba(236, 239, 246, 0.3);
+  --text-ghost: rgba(236, 239, 246, 0.15);
+
+  /* Accent */
+  --accent: #6b8afd;
+  --accent-hover: #8ba3ff;
+  --accent-muted: rgba(107, 138, 253, 0.1);
+  --accent-glow: rgba(107, 138, 253, 0.25);
+
+  /* Borders */
+  --border: rgba(255, 255, 255, 0.05);
+  --border-focus: rgba(107, 138, 253, 0.45);
+
+  /* Interactive surfaces */
+  --hover: rgba(255, 255, 255, 0.035);
+  --active: rgba(107, 138, 253, 0.08);
+  --pressed: rgba(107, 138, 253, 0.14);
+
+  /* Feedback */
+  --green: #34d399;
+  --red: #f87171;
+
+  /* Spacing (8pt grid) */
+  --s1: 4px;
+  --s2: 8px;
+  --s3: 12px;
+  --s4: 16px;
+  --s5: 24px;
+  --s6: 32px;
+  --s7: 48px;
+
+  /* Radius */
+  --r1: 4px;
+  --r2: 6px;
+  --r3: 8px;
+  --r4: 12px;
+  --r5: 16px;
 }
 
 * {
@@ -19,31 +58,70 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: var(--editor-bg);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter",
+    "Segoe UI", system-ui, sans-serif;
+  background: var(--bg-base);
   color: var(--text-primary);
   overflow: hidden;
   height: 100vh;
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: -0.01em;
 }
 
 #root {
   height: 100vh;
 }
 
-/* Custom scrollbar */
+/* Scrollbar — ultra-minimal */
 ::-webkit-scrollbar {
-  width: 6px;
+  width: 4px;
 }
-
 ::-webkit-scrollbar-track {
   background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 100px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.12);
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
+/* Selection */
+::selection {
+  background: rgba(107, 138, 253, 0.25);
+}
+
+/* Global transitions */
+button, a, input, textarea {
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Focus reset — handle per-component */
+*:focus-visible {
+  outline: none;
+}
+
+textarea:focus {
+  outline: none;
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }

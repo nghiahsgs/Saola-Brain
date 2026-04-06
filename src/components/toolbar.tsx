@@ -1,8 +1,9 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNoteStore } from "../store/note-store";
 
 export default function Toolbar() {
   const { httpPort, loadHttpPort } = useNoteStore();
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     loadHttpPort();
@@ -30,23 +31,95 @@ Examples:
 All notes are stored as markdown files. Use folders to organize topics.`;
 
     navigator.clipboard.writeText(prompt);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <div className="h-8 bg-[var(--sidebar-bg)] border-t border-[var(--border)] flex items-center justify-between px-3">
-      <div className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
+    <div
+      className="flex items-center justify-between shrink-0"
+      style={{
+        height: "34px",
+        padding: "0 var(--s4)",
+        background: "var(--bg-sidebar)",
+        borderTop: "1px solid var(--border)",
+      }}
+    >
+      {/* Status */}
+      <div className="flex items-center" style={{ gap: "var(--s2)" }}>
         {httpPort && (
-          <span className="opacity-60">API: 127.0.0.1:{httpPort}</span>
+          <>
+            <div
+              style={{
+                width: "5px",
+                height: "5px",
+                borderRadius: "50%",
+                background: "var(--green)",
+                boxShadow: "0 0 6px rgba(52,211,153,0.4)",
+              }}
+            />
+            <span
+              style={{
+                fontSize: "11px",
+                color: "var(--text-ghost)",
+                fontFamily: "monospace",
+                letterSpacing: "0.02em",
+              }}
+            >
+              :{httpPort}
+            </span>
+          </>
         )}
       </div>
 
+      {/* Copy prompt */}
       <button
-        className="text-xs px-3 py-1 rounded bg-[var(--accent)] text-[var(--sidebar-bg)] font-medium hover:bg-[var(--accent-hover)] transition-colors"
+        className="toolbar-btn"
+        data-copied={copied || undefined}
         onClick={copyPrompt}
         title="Copy AI prompt with API endpoints"
       >
-        Copy Prompt
+        {copied ? (
+          <>
+            <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+              <path d="M2 5.5L4.5 8L9 3" />
+            </svg>
+            Copied
+          </>
+        ) : (
+          <>
+            <svg width="11" height="11" viewBox="0 0 11 11" fill="none" stroke="currentColor" strokeWidth="1.1">
+              <rect x="3.5" y="3.5" width="6" height="6" rx="1" />
+              <path d="M7.5 3.5V2a.75.75 0 00-.75-.75H2A.75.75 0 001.25 2v4.75A.75.75 0 002 7.5h1.5" />
+            </svg>
+            Copy Prompt
+          </>
+        )}
       </button>
+
+      <style>{`
+        .toolbar-btn {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          padding: 3px 10px;
+          font-size: 11px;
+          font-weight: 500;
+          border-radius: var(--r1);
+          border: none;
+          background: transparent;
+          color: var(--text-tertiary);
+          cursor: pointer;
+          letter-spacing: 0;
+        }
+        .toolbar-btn:hover {
+          background: var(--hover);
+          color: var(--text-secondary);
+        }
+        .toolbar-btn[data-copied] {
+          color: var(--green);
+        }
+      `}</style>
     </div>
   );
 }
