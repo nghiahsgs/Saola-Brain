@@ -10,6 +10,14 @@ fn notes_dir() -> PathBuf {
     dir
 }
 
+/// Get assets directory: ~/SaolaBrain/assets/
+fn assets_dir() -> PathBuf {
+    let home = dirs::home_dir().expect("Cannot find home directory");
+    let dir = home.join("SaolaBrain").join("assets");
+    fs::create_dir_all(&dir).ok();
+    dir
+}
+
 /// Represents a file or folder in the tree
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct NoteEntry {
@@ -124,4 +132,67 @@ pub fn notes_rename(old_path: String, new_path: String) -> Result<(), String> {
     }
 
     fs::rename(&old, &new).map_err(|e| format!("Cannot rename: {e}"))
+}
+
+/// Save a base64-encoded image to assets dir, return relative path
+#[tauri::command]
+pub fn notes_save_image(data: String, filename: String) -> Result<String, String> {
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    // Generate unique filename with timestamp
+    let ts = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_millis();
+    let ext = filename
+        .rsplit('.')
+        .next()
+        .unwrap_or("png");
+    let name = format!("{ts}.{ext}");
+
+    let dir = assets_dir();
+    let full_path = dir.join(&name);
+
+    // Strip data URL prefix if present (e.g. "data:image/png;base64,...")
+    let b64 = if let Some(pos) = data.find(",") {
+        &data[pos + 1..]
+    } else {
+        &data
+    };
+
+    // Decode and save
+    use std::io::Write;
+    let bytes = base64_decode(b64).map_err(|e| format!("Invalid base64: {e}"))?;
+    let mut file = fs::File::create(&full_path).map_err(|e| format!("Cannot create file: {e}"))?;
+    file.write_all(&bytes).map_err(|e| format!("Cannot write: {e}"))?;
+
+    // Return path relative to notes dir for markdown embedding
+    Ok(format!("../assets/{name}"))
+}
+
+/// Simple base64 decoder
+fn base64_decode(input: &str) -> Result<Vec<u8>, String> {
+    let table: Vec<u8> = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+        .to_vec();
+    let mut output = Vec::new();
+    let mut buf: u32 = 0;
+    let mut bits: u32 = 0;
+
+    for &byte in input.as_bytes() {
+        if byte == b'=' || byte == b'\n' || byte == b'\r' || byte == b' ' {
+            continue;
+        }
+        let val = table
+            .iter()
+            .position(|&b| b == byte)
+            .ok_or_else(|| format!("Invalid base64 char: {}", byte as char))? as u32;
+        buf = (buf << 6) | val;
+        bits += 6;
+        if bits >= 8 {
+            bits -= 8;
+            output.push((buf >> bits) as u8);
+            buf &= (1 << bits) - 1;
+        }
+    }
+    Ok(output)
 }
