@@ -1,19 +1,50 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useNoteStore, NoteEntry } from "../store/note-store";
 
-function TreeNode({ entry, depth }: { entry: NoteEntry; depth: number }) {
+/* ── Context menu state ── */
+interface ContextMenu {
+  x: number;
+  y: number;
+  entry: NoteEntry;
+}
+
+function TreeNode({
+  entry,
+  depth,
+  onContextMenu,
+  onDrop,
+}: {
+  entry: NoteEntry;
+  depth: number;
+  onContextMenu: (e: React.MouseEvent, entry: NoteEntry) => void;
+  onDrop: (notePath: string, folderPath: string) => void;
+}) {
   const [expanded, setExpanded] = useState(true);
-  const { selectedPath, selectNote, deleteNote } = useNoteStore();
+  const [dragOver, setDragOver] = useState(false);
+  const { selectedPath, selectNote } = useNoteStore();
   const isSelected = selectedPath === entry.path;
-  const leftPad = depth * 14 + 12;
+  const leftPad = depth * 16 + 12;
 
   if (entry.is_dir) {
     return (
       <div>
         <button
           className="sidebar-item"
+          data-dragover={dragOver || undefined}
           style={{ paddingLeft: `${leftPad}px` }}
           onClick={() => setExpanded(!expanded)}
+          onContextMenu={(e) => onContextMenu(e, entry)}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOver(true);
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragOver(false);
+            const notePath = e.dataTransfer.getData("text/plain");
+            if (notePath) onDrop(notePath, entry.path);
+          }}
         >
           <svg
             width="8"
@@ -38,7 +69,13 @@ function TreeNode({ entry, depth }: { entry: NoteEntry; depth: number }) {
         </button>
         {expanded &&
           entry.children?.map((child) => (
-            <TreeNode key={child.path} entry={child} depth={depth + 1} />
+            <TreeNode
+              key={child.path}
+              entry={child}
+              depth={depth + 1}
+              onContextMenu={onContextMenu}
+              onDrop={onDrop}
+            />
           ))}
       </div>
     );
@@ -50,6 +87,12 @@ function TreeNode({ entry, depth }: { entry: NoteEntry; depth: number }) {
       data-active={isSelected || undefined}
       style={{ paddingLeft: `${leftPad + 16}px` }}
       onClick={() => selectNote(entry.path)}
+      onContextMenu={(e) => onContextMenu(e, entry)}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData("text/plain", entry.path);
+        e.dataTransfer.effectAllowed = "move";
+      }}
     >
       <span
         className="truncate flex-1 text-left"
@@ -61,83 +104,61 @@ function TreeNode({ entry, depth }: { entry: NoteEntry; depth: number }) {
       >
         {entry.name.replace(".md", "")}
       </span>
-      <span
-        className="delete-btn"
-        onClick={(e) => {
-          e.stopPropagation();
-          if (confirm(`Delete "${entry.name}"?`)) deleteNote(entry.path);
-        }}
-      >
-        ×
-      </span>
-
-      <style>{`
-        .sidebar-item {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          width: 100%;
-          padding: 5px 10px;
-          border: none;
-          border-radius: var(--r2);
-          background: transparent;
-          cursor: pointer;
-          position: relative;
-          text-align: left;
-        }
-        .sidebar-item:hover {
-          background: var(--hover);
-        }
-        .sidebar-item[data-active] {
-          background: var(--active);
-        }
-        .sidebar-item[data-active]::before {
-          content: "";
-          position: absolute;
-          left: 0;
-          top: 6px;
-          bottom: 6px;
-          width: 2px;
-          border-radius: 2px;
-          background: var(--accent);
-        }
-        .delete-btn {
-          opacity: 0;
-          font-size: 14px;
-          color: var(--text-tertiary);
-          flex-shrink: 0;
-          line-height: 1;
-          padding: 0 2px;
-        }
-        .sidebar-item:hover .delete-btn {
-          opacity: 1;
-        }
-        .delete-btn:hover {
-          color: var(--red) !important;
-        }
-      `}</style>
     </button>
   );
 }
 
 export default function Sidebar() {
-  const { tree, loadTree, createNote, createFolder } = useNoteStore();
+  const { tree, loadTree, createNote, createFolder, deleteNote, renameNote } =
+    useNoteStore();
   const [newName, setNewName] = useState("");
   const [showInput, setShowInput] = useState<"note" | "folder" | null>(null);
+  const [inputPrefix, setInputPrefix] = useState(""); // folder path prefix for creating inside folder
+  const [ctxMenu, setCtxMenu] = useState<ContextMenu | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadTree();
   }, [loadTree]);
 
+  // Close context menu on click outside
+  useEffect(() => {
+    const close = () => setCtxMenu(null);
+    window.addEventListener("click", close);
+    return () => window.removeEventListener("click", close);
+  }, []);
+
+  const handleContextMenu = (e: React.MouseEvent, entry: NoteEntry) => {
+    e.preventDefault();
+    setCtxMenu({ x: e.clientX, y: e.clientY, entry });
+  };
+
+  const handleDrop = (notePath: string, folderPath: string) => {
+    const fileName = notePath.split("/").pop() || notePath;
+    const newPath = `${folderPath}/${fileName}`;
+    if (newPath !== notePath) {
+      renameNote(notePath, newPath);
+    }
+  };
+
   const handleCreate = () => {
     if (!newName.trim()) return;
+    const prefix = inputPrefix ? `${inputPrefix}/` : "";
     if (showInput === "note") {
-      createNote(newName.endsWith(".md") ? newName : `${newName}.md`);
-    } else {
-      createFolder(newName);
+      const path = newName.endsWith(".md") ? newName : `${newName}.md`;
+      createNote(`${prefix}${path}`);
+    } else if (showInput === "folder") {
+      createFolder(`${prefix}${newName}`);
     }
     setNewName("");
     setShowInput(null);
+    setInputPrefix("");
+  };
+
+  const startCreateInFolder = (folderPath: string, type: "note" | "folder") => {
+    setInputPrefix(folderPath);
+    setShowInput(type);
+    setCtxMenu(null);
   };
 
   return (
@@ -164,7 +185,10 @@ export default function Sidebar() {
         </span>
         <button
           className="icon-btn"
-          onClick={() => setShowInput(showInput === "note" ? null : "note")}
+          onClick={() => {
+            setInputPrefix("");
+            setShowInput(showInput === "note" ? null : "note");
+          }}
           title="New note"
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
@@ -176,6 +200,11 @@ export default function Sidebar() {
       {/* Input */}
       {showInput && (
         <div style={{ padding: "var(--s2) var(--s3)" }}>
+          {inputPrefix && (
+            <div style={{ fontSize: "11px", color: "var(--text-ghost)", marginBottom: "4px", paddingLeft: "2px" }}>
+              in {inputPrefix}/
+            </div>
+          )}
           <input
             className="sidebar-input"
             placeholder={showInput === "note" ? "Note name..." : "Folder name..."}
@@ -183,7 +212,10 @@ export default function Sidebar() {
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") handleCreate();
-              if (e.key === "Escape") setShowInput(null);
+              if (e.key === "Escape") {
+                setShowInput(null);
+                setInputPrefix("");
+              }
             }}
             autoFocus
           />
@@ -206,7 +238,10 @@ export default function Sidebar() {
           </span>
           <button
             className="icon-btn-sm"
-            onClick={() => setShowInput(showInput === "folder" ? null : "folder")}
+            onClick={() => {
+              setInputPrefix("");
+              setShowInput(showInput === "folder" ? null : "folder");
+            }}
             title="New folder"
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
@@ -256,12 +291,111 @@ export default function Sidebar() {
           </div>
         ) : (
           tree.map((entry) => (
-            <TreeNode key={entry.path} entry={entry} depth={0} />
+            <TreeNode
+              key={entry.path}
+              entry={entry}
+              depth={0}
+              onContextMenu={handleContextMenu}
+              onDrop={handleDrop}
+            />
           ))
         )}
       </div>
 
+      {/* Context menu */}
+      {ctxMenu && (
+        <div
+          ref={menuRef}
+          className="ctx-menu"
+          style={{ top: ctxMenu.y, left: ctxMenu.x }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {ctxMenu.entry.is_dir && (
+            <>
+              <button
+                className="ctx-item"
+                onClick={() => startCreateInFolder(ctxMenu.entry.path, "note")}
+              >
+                New note here
+              </button>
+              <button
+                className="ctx-item"
+                onClick={() => startCreateInFolder(ctxMenu.entry.path, "folder")}
+              >
+                New folder here
+              </button>
+              <div className="ctx-divider" />
+            </>
+          )}
+          <button
+            className="ctx-item"
+            onClick={() => {
+              const name = prompt("Rename to:", ctxMenu.entry.name);
+              if (name && name !== ctxMenu.entry.name) {
+                const parent = ctxMenu.entry.path.includes("/")
+                  ? ctxMenu.entry.path.substring(0, ctxMenu.entry.path.lastIndexOf("/"))
+                  : "";
+                const newPath = parent ? `${parent}/${name}` : name;
+                renameNote(ctxMenu.entry.path, newPath);
+              }
+              setCtxMenu(null);
+            }}
+          >
+            Rename
+          </button>
+          <button
+            className="ctx-item ctx-danger"
+            onClick={() => {
+              if (confirm(`Delete "${ctxMenu.entry.name}"?`)) {
+                deleteNote(ctxMenu.entry.path);
+              }
+              setCtxMenu(null);
+            }}
+          >
+            Delete
+          </button>
+        </div>
+      )}
+
       <style>{`
+        .sidebar-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          width: 100%;
+          padding: 5px 10px;
+          border: none;
+          border-radius: var(--r2);
+          background: transparent;
+          cursor: pointer;
+          position: relative;
+          text-align: left;
+          transition: background 0.12s ease;
+        }
+        .sidebar-item:hover {
+          background: var(--hover);
+        }
+        .sidebar-item[data-active] {
+          background: var(--active);
+        }
+        .sidebar-item[data-active]::before {
+          content: "";
+          position: absolute;
+          left: 0;
+          top: 6px;
+          bottom: 6px;
+          width: 2px;
+          border-radius: 2px;
+          background: var(--accent);
+        }
+        .sidebar-item[data-dragover] {
+          background: var(--accent-muted);
+          outline: 1px dashed var(--accent);
+          outline-offset: -1px;
+        }
+        .sidebar-item[draggable]:active {
+          opacity: 0.5;
+        }
         .icon-btn {
           display: flex;
           align-items: center;
@@ -322,6 +456,43 @@ export default function Sidebar() {
           background: var(--hover);
           color: var(--text-primary);
           border-color: rgba(255,255,255,0.08);
+        }
+
+        /* Context menu */
+        .ctx-menu {
+          position: fixed;
+          z-index: 100;
+          min-width: 160px;
+          padding: 4px;
+          background: var(--bg-elevated);
+          border: 1px solid var(--border);
+          border-radius: var(--r3);
+          box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+        }
+        .ctx-item {
+          display: block;
+          width: 100%;
+          padding: 6px 10px;
+          font-size: 12px;
+          color: var(--text-secondary);
+          background: none;
+          border: none;
+          border-radius: var(--r1);
+          cursor: pointer;
+          text-align: left;
+        }
+        .ctx-item:hover {
+          background: var(--hover);
+          color: var(--text-primary);
+        }
+        .ctx-danger:hover {
+          background: rgba(248,113,113,0.1);
+          color: var(--red);
+        }
+        .ctx-divider {
+          height: 1px;
+          margin: 4px 0;
+          background: var(--border);
         }
       `}</style>
     </div>
