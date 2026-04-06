@@ -13,11 +13,13 @@ function TreeNode({
   depth,
   onContextMenu,
   onDrop,
+  onCreateInFolder,
 }: {
   entry: NoteEntry;
   depth: number;
   onContextMenu: (e: React.MouseEvent, entry: NoteEntry) => void;
   onDrop: (notePath: string, folderPath: string) => void;
+  onCreateInFolder: (folderPath: string) => void;
 }) {
   const [expanded, setExpanded] = useState(true);
   const [dragOver, setDragOver] = useState(false);
@@ -63,8 +65,20 @@ function TreeNode({
           >
             <path d="M2.5 1L5.5 4L2.5 7" />
           </svg>
-          <span style={{ color: "var(--text-secondary)", fontSize: "13px" }}>
+          <span className="flex-1" style={{ color: "var(--text-secondary)", fontSize: "13px" }}>
             {entry.name}
+          </span>
+          <span
+            className="folder-add-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              onCreateInFolder(entry.path);
+            }}
+            title="New note in this folder"
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round">
+              <path d="M5 2v6M2 5h6" />
+            </svg>
           </span>
         </button>
         {expanded &&
@@ -75,6 +89,7 @@ function TreeNode({
               depth={depth + 1}
               onContextMenu={onContextMenu}
               onDrop={onDrop}
+              onCreateInFolder={onCreateInFolder}
             />
           ))}
       </div>
@@ -297,6 +312,7 @@ export default function Sidebar() {
               depth={0}
               onContextMenu={handleContextMenu}
               onDrop={handleDrop}
+              onCreateInFolder={(folderPath) => startCreateInFolder(folderPath, "note")}
             />
           ))
         )}
@@ -395,6 +411,25 @@ export default function Sidebar() {
         }
         .sidebar-item[draggable]:active {
           opacity: 0.5;
+        }
+        .folder-add-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 18px;
+          height: 18px;
+          border-radius: var(--r1);
+          opacity: 0;
+          color: var(--text-tertiary);
+          flex-shrink: 0;
+          cursor: pointer;
+        }
+        .sidebar-item:hover .folder-add-btn {
+          opacity: 1;
+        }
+        .folder-add-btn:hover {
+          background: var(--hover);
+          color: var(--text-primary);
         }
         .icon-btn {
           display: flex;
