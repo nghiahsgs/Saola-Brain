@@ -1,6 +1,30 @@
 import { useEffect, useState, useRef } from "react";
 import { useNoteStore, NoteEntry } from "../store/note-store";
 
+/* ── Icons ── */
+const FolderIcon = ({ open }: { open: boolean }) => (
+  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style={{ flexShrink: 0 }}>
+    {open ? (
+      <path
+        d="M1.75 4.5V3a1 1 0 011-1h3l1.25 1.25h4.25a1 1 0 011 1V4.5M2.25 4.5h9.5a1 1 0 011 1v4.75a1 1 0 01-1 1H2.25a1 1 0 01-1-1V5.5a1 1 0 011-1z"
+        stroke="var(--accent)" strokeWidth="1" fill="rgba(124,140,245,0.08)"
+      />
+    ) : (
+      <path
+        d="M1.75 4V3a1 1 0 011-1h3l1.25 1.25h4.25a1 1 0 011 1v5a1 1 0 01-1 1h-8.5a1 1 0 01-1-1V4z"
+        stroke="var(--text-tertiary)" strokeWidth="1" fill="none"
+      />
+    )}
+  </svg>
+);
+
+const NoteIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 13 13" fill="none" style={{ flexShrink: 0 }}>
+    <rect x="2" y="1.5" width="9" height="10" rx="1.5" stroke="var(--text-ghost)" strokeWidth="0.9" />
+    <path d="M4.5 5h4M4.5 7h2.5" stroke="var(--text-ghost)" strokeWidth="0.8" strokeLinecap="round" opacity="0.6" />
+  </svg>
+);
+
 /* ── Context menu state ── */
 interface ContextMenu {
   x: number;
@@ -25,7 +49,7 @@ function TreeNode({
   const [dragOver, setDragOver] = useState(false);
   const { selectedPath, selectNote } = useNoteStore();
   const isSelected = selectedPath === entry.path;
-  const leftPad = depth * 16 + 12;
+  const leftPad = depth * 18 + 10;
 
   if (entry.is_dir) {
     return (
@@ -49,25 +73,24 @@ function TreeNode({
           }}
         >
           <svg
-            width="8"
-            height="8"
-            viewBox="0 0 8 8"
+            width="7"
+            height="7"
+            viewBox="0 0 7 7"
             fill="none"
             stroke="currentColor"
-            strokeWidth="1.4"
+            strokeWidth="1.3"
             strokeLinecap="round"
             style={{
               transform: expanded ? "rotate(90deg)" : "rotate(0deg)",
               transition: "transform 0.15s ease",
-              opacity: 0.35,
+              opacity: 0.3,
               flexShrink: 0,
             }}
           >
-            <path d="M2.5 1L5.5 4L2.5 7" />
+            <path d="M2 1L5 3.5L2 6" />
           </svg>
-          <span className="flex-1" style={{ color: "var(--text-secondary)", fontSize: "13px" }}>
-            {entry.name}
-          </span>
+          <FolderIcon open={expanded} />
+          <span className="sidebar-folder-name">{entry.name}</span>
           <span
             className="folder-add-btn"
             onClick={(e) => {
@@ -100,7 +123,7 @@ function TreeNode({
     <button
       className="sidebar-item group"
       data-active={isSelected || undefined}
-      style={{ paddingLeft: `${leftPad + 16}px` }}
+      style={{ paddingLeft: `${leftPad + 20}px` }}
       onClick={() => selectNote(entry.path)}
       onContextMenu={(e) => onContextMenu(e, entry)}
       draggable
@@ -109,14 +132,8 @@ function TreeNode({
         e.dataTransfer.effectAllowed = "move";
       }}
     >
-      <span
-        className="truncate flex-1 text-left"
-        style={{
-          fontSize: "13px",
-          fontWeight: isSelected ? 500 : 400,
-          color: isSelected ? "var(--text-primary)" : "var(--text-secondary)",
-        }}
-      >
+      <NoteIcon />
+      <span className="sidebar-note-name" data-active={isSelected || undefined}>
         {entry.name.replace(".md", "")}
       </span>
     </button>
@@ -124,21 +141,37 @@ function TreeNode({
 }
 
 export default function Sidebar() {
-  const { tree, loadTree, createNote, createFolder, deleteNote, renameNote } =
+  const { tree, loadTree, createNote, createFolder, deleteNote, renameNote, showCreateInput, setShowCreateInput } =
     useNoteStore();
   const [newName, setNewName] = useState("");
   const [showInput, setShowInput] = useState<"note" | "folder" | null>(null);
   const [inputPrefix, setInputPrefix] = useState("");
   const [ctxMenu, setCtxMenu] = useState<ContextMenu | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadTree();
-    // Reload when window regains focus (picks up API-created notes)
     const onFocus = () => loadTree();
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, []);
+
+  // Respond to "Create new note" triggered from editor empty state
+  useEffect(() => {
+    if (showCreateInput) {
+      setInputPrefix("");
+      setShowInput("note");
+      setShowCreateInput(false);
+    }
+  }, [showCreateInput]);
+
+  // Auto-focus input when it appears
+  useEffect(() => {
+    if (showInput) {
+      setTimeout(() => inputRef.current?.focus(), 50);
+    }
+  }, [showInput]);
 
   // Close context menu on click outside
   useEffect(() => {
@@ -184,7 +217,7 @@ export default function Sidebar() {
     <div
       className="flex flex-col h-full select-none"
       style={{
-        width: "256px",
+        width: "260px",
         minWidth: "200px",
         background: "var(--bg-sidebar)",
         borderRight: "1px solid var(--border)",
@@ -194,12 +227,12 @@ export default function Sidebar() {
       <div
         className="flex items-center justify-between"
         style={{
-          height: "48px",
-          padding: "0 var(--s4) 0 var(--s5)",
+          height: "50px",
+          padding: "0 var(--s4) 0 20px",
           borderBottom: "1px solid var(--border)",
         }}
       >
-        <span style={{ fontSize: "13px", fontWeight: 600, letterSpacing: "-0.02em" }}>
+        <span style={{ fontSize: "13px", fontWeight: 700, letterSpacing: "-0.02em", color: "var(--text-primary)" }}>
           Saola Brain
         </span>
         <button
@@ -220,11 +253,12 @@ export default function Sidebar() {
       {showInput && (
         <div style={{ padding: "var(--s2) var(--s3)" }}>
           {inputPrefix && (
-            <div style={{ fontSize: "11px", color: "var(--text-ghost)", marginBottom: "4px", paddingLeft: "2px" }}>
+            <div style={{ fontSize: "11px", color: "var(--text-tertiary)", marginBottom: "4px", paddingLeft: "2px" }}>
               in {inputPrefix}/
             </div>
           )}
           <input
+            ref={inputRef}
             className="sidebar-input"
             placeholder={showInput === "note" ? "Note name..." : "Folder name..."}
             value={newName}
@@ -241,20 +275,10 @@ export default function Sidebar() {
         </div>
       )}
 
-      {/* Section */}
-      <div style={{ padding: "var(--s4) var(--s5) var(--s2)" }}>
+      {/* Section label */}
+      <div style={{ padding: "var(--s4) 20px var(--s2)" }}>
         <div className="flex items-center justify-between">
-          <span
-            style={{
-              fontSize: "11px",
-              fontWeight: 500,
-              color: "var(--text-ghost)",
-              textTransform: "uppercase",
-              letterSpacing: "0.06em",
-            }}
-          >
-            Notes
-          </span>
+          <span className="sidebar-section-label">Notes</span>
           <button
             className="icon-btn-sm"
             onClick={() => {
@@ -381,7 +405,7 @@ export default function Sidebar() {
         .sidebar-item {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 7px;
           width: 100%;
           padding: 5px 10px;
           border: none;
@@ -390,10 +414,13 @@ export default function Sidebar() {
           cursor: pointer;
           position: relative;
           text-align: left;
-          transition: background 0.12s ease;
+          transition: background 0.12s ease, transform 0.1s ease;
         }
         .sidebar-item:hover {
           background: var(--hover);
+        }
+        .sidebar-item:active {
+          transform: scale(0.985);
         }
         .sidebar-item[data-active] {
           background: var(--active);
@@ -402,11 +429,12 @@ export default function Sidebar() {
           content: "";
           position: absolute;
           left: 0;
-          top: 6px;
-          bottom: 6px;
-          width: 2px;
+          top: 5px;
+          bottom: 5px;
+          width: 2.5px;
           border-radius: 2px;
           background: var(--accent);
+          box-shadow: 0 0 8px var(--accent-glow);
         }
         .sidebar-item[data-dragover] {
           background: var(--accent-muted);
@@ -416,6 +444,48 @@ export default function Sidebar() {
         .sidebar-item[draggable]:active {
           opacity: 0.5;
         }
+
+        .sidebar-folder-name {
+          flex: 1;
+          font-size: 12.5px;
+          font-weight: 500;
+          color: var(--text-secondary);
+          letter-spacing: -0.01em;
+        }
+        .sidebar-item:hover .sidebar-folder-name {
+          color: var(--text-primary);
+        }
+
+        .sidebar-note-name {
+          flex: 1;
+          font-size: 12.5px;
+          font-weight: 400;
+          color: var(--text-tertiary);
+          letter-spacing: -0.01em;
+          text-align: left;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .sidebar-note-name[data-active] {
+          color: var(--text-primary);
+          font-weight: 500;
+        }
+        .sidebar-item:hover .sidebar-note-name {
+          color: var(--text-secondary);
+        }
+        .sidebar-item[data-active]:hover .sidebar-note-name {
+          color: var(--text-primary);
+        }
+
+        .sidebar-section-label {
+          font-size: 10.5px;
+          font-weight: 600;
+          color: var(--text-ghost);
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+        }
+
         .folder-add-btn {
           display: flex;
           align-items: center;
@@ -427,6 +497,7 @@ export default function Sidebar() {
           color: var(--text-tertiary);
           flex-shrink: 0;
           cursor: pointer;
+          transition: opacity 0.12s ease;
         }
         .sidebar-item:hover .folder-add-btn {
           opacity: 1;
@@ -435,6 +506,7 @@ export default function Sidebar() {
           background: var(--hover);
           color: var(--text-primary);
         }
+
         .icon-btn {
           display: flex;
           align-items: center;
@@ -444,13 +516,17 @@ export default function Sidebar() {
           border-radius: var(--r2);
           border: none;
           background: transparent;
-          color: var(--text-secondary);
+          color: var(--text-tertiary);
           cursor: pointer;
         }
         .icon-btn:hover {
           background: var(--hover);
           color: var(--text-primary);
         }
+        .icon-btn:active {
+          transform: scale(0.92);
+        }
+
         .icon-btn-sm {
           display: flex;
           align-items: center;
@@ -467,20 +543,26 @@ export default function Sidebar() {
           background: var(--hover);
           color: var(--text-secondary);
         }
+
         .sidebar-input {
           width: 100%;
-          padding: 6px 10px;
+          padding: 7px 10px;
           font-size: 13px;
           border-radius: var(--r2);
-          border: 1px solid var(--border);
-          background: var(--bg-base);
+          border: 1px solid var(--border-focus);
+          background: var(--bg-surface);
           color: var(--text-primary);
           outline: none;
+          box-shadow: 0 0 0 3px rgba(124, 140, 245, 0.08);
         }
         .sidebar-input:focus {
-          border-color: var(--border-focus);
-          box-shadow: 0 0 0 2px rgba(107, 138, 253, 0.12);
+          border-color: var(--accent);
+          box-shadow: 0 0 0 3px rgba(124, 140, 245, 0.15);
         }
+        .sidebar-input::placeholder {
+          color: var(--text-ghost);
+        }
+
         .sidebar-cta {
           padding: 5px 14px;
           font-size: 12px;
@@ -506,7 +588,8 @@ export default function Sidebar() {
           background: var(--bg-elevated);
           border: 1px solid var(--border);
           border-radius: var(--r3);
-          box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+          box-shadow: 0 8px 30px rgba(0,0,0,0.5), 0 0 1px rgba(255,255,255,0.05);
+          animation: fadeInUp 0.1s ease;
         }
         .ctx-item {
           display: block;

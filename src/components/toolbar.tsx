@@ -39,14 +39,14 @@ All notes are stored as markdown files. Use folders to organize topics.`;
     <div
       className="flex items-center justify-between shrink-0"
       style={{
-        height: "34px",
+        height: "32px",
         padding: "0 var(--s4)",
         background: "var(--bg-sidebar)",
         borderTop: "1px solid var(--border)",
       }}
     >
       {/* Status */}
-      <div className="flex items-center" style={{ gap: "var(--s2)" }}>
+      <div className="flex items-center" style={{ gap: "6px" }}>
         {httpPort && (
           <>
             <div
@@ -55,18 +55,18 @@ All notes are stored as markdown files. Use folders to organize topics.`;
                 height: "5px",
                 borderRadius: "50%",
                 background: "var(--green)",
-                boxShadow: "0 0 6px rgba(52,211,153,0.4)",
+                boxShadow: "0 0 6px rgba(52,211,153,0.3)",
               }}
             />
             <span
               style={{
-                fontSize: "11px",
+                fontSize: "10.5px",
                 color: "var(--text-ghost)",
-                fontFamily: "monospace",
+                fontFamily: "'SF Mono', Menlo, monospace",
                 letterSpacing: "0.02em",
               }}
             >
-              :{httpPort}
+              API :{httpPort}
             </span>
           </>
         )}
@@ -103,7 +103,7 @@ All notes are stored as markdown files. Use folders to organize topics.`;
           align-items: center;
           gap: 5px;
           padding: 3px 10px;
-          font-size: 11px;
+          font-size: 10.5px;
           font-weight: 500;
           border-radius: var(--r1);
           border: none;
@@ -115,6 +115,9 @@ All notes are stored as markdown files. Use folders to organize topics.`;
         .toolbar-btn:hover {
           background: var(--hover);
           color: var(--text-secondary);
+        }
+        .toolbar-btn:active {
+          transform: scale(0.97);
         }
         .toolbar-btn[data-copied] {
           color: var(--green);

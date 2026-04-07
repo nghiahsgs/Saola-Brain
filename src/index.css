@@ -1,34 +1,36 @@
 @import "tailwindcss";
 
 :root {
-  /* === DESIGN SYSTEM === */
+  /* === DESIGN SYSTEM — macOS + Linear vibe === */
 
-  /* Multi-layer backgrounds (macOS depth) */
-  --bg-base: #0c0e12;
-  --bg-sidebar: #12151c;
-  --bg-surface: #181c27;
-  --bg-elevated: #1e2333;
+  /* Multi-layer backgrounds (deeper contrast) */
+  --bg-base: #0d0f14;
+  --bg-sidebar: #101318;
+  --bg-surface: #171b25;
+  --bg-elevated: #1c2130;
+  --bg-card: rgba(255, 255, 255, 0.025);
 
-  /* Text (4 levels) */
-  --text-primary: #eceff6;
-  --text-secondary: rgba(236, 239, 246, 0.55);
-  --text-tertiary: rgba(236, 239, 246, 0.3);
-  --text-ghost: rgba(236, 239, 246, 0.15);
+  /* Text (4 levels — stronger contrast) */
+  --text-primary: #e8ecf4;
+  --text-secondary: rgba(232, 236, 244, 0.6);
+  --text-tertiary: rgba(232, 236, 244, 0.35);
+  --text-ghost: rgba(232, 236, 244, 0.18);
 
-  /* Accent */
-  --accent: #6b8afd;
-  --accent-hover: #8ba3ff;
-  --accent-muted: rgba(107, 138, 253, 0.1);
-  --accent-glow: rgba(107, 138, 253, 0.25);
+  /* Accent — deeper blue-indigo (less "childish") */
+  --accent: #7c8cf5;
+  --accent-hover: #97a5ff;
+  --accent-muted: rgba(124, 140, 245, 0.1);
+  --accent-glow: rgba(124, 140, 245, 0.2);
+  --accent-gradient: linear-gradient(135deg, #7c8cf5, #6366f1);
 
   /* Borders */
-  --border: rgba(255, 255, 255, 0.05);
-  --border-focus: rgba(107, 138, 253, 0.45);
+  --border: rgba(255, 255, 255, 0.06);
+  --border-focus: rgba(124, 140, 245, 0.45);
 
   /* Interactive surfaces */
-  --hover: rgba(255, 255, 255, 0.035);
-  --active: rgba(107, 138, 253, 0.08);
-  --pressed: rgba(107, 138, 253, 0.14);
+  --hover: rgba(255, 255, 255, 0.04);
+  --active: rgba(124, 140, 245, 0.1);
+  --pressed: rgba(124, 140, 245, 0.16);
 
   /* Feedback */
   --green: #34d399;
@@ -92,7 +94,7 @@ body {
 
 /* Selection */
 ::selection {
-  background: rgba(107, 138, 253, 0.25);
+  background: rgba(124, 140, 245, 0.25);
 }
 
 /* Global transitions */
@@ -100,7 +102,7 @@ button, a, input, textarea {
   transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Focus reset — handle per-component */
+/* Focus reset */
 *:focus-visible {
   outline: none;
 }
@@ -124,4 +126,20 @@ textarea:focus {
 @keyframes pulse-soft {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
+}
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 20px rgba(124, 140, 245, 0.15); }
+  50% { box-shadow: 0 0 30px rgba(124, 140, 245, 0.25); }
+}
+
+@keyframes float-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }

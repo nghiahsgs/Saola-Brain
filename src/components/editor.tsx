@@ -41,7 +41,7 @@ function htmlToMd(html: string): string {
 }
 
 export default function Editor() {
-  const { selectedPath, content, isModified, updateContent, saveNote, createNote, assetsDir, loadAssetsDir } =
+  const { selectedPath, content, contentVersion, isModified, updateContent, saveNote, assetsDir, loadAssetsDir, setShowCreateInput } =
     useNoteStore();
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const isUpdatingRef = useRef(false);
@@ -74,11 +74,9 @@ export default function Editor() {
                   data: base64,
                   filename: file.name || "paste.png",
                 });
-                // Convert absolute path to Tauri asset URL
                 const assetUrl = convertFileSrc(absPath);
                 editor?.chain().focus().setImage({ src: assetUrl }).run();
               } catch {
-                // Fallback: embed as base64 inline
                 editor?.chain().focus().setImage({ src: base64 }).run();
               }
             };
@@ -103,7 +101,7 @@ export default function Editor() {
     loadAssetsDir();
   }, []);
 
-  // Load content into editor when note changes
+  // Load content into editor when note changes or content loaded from disk
   useEffect(() => {
     if (!editor || !selectedPath) return;
     isUpdatingRef.current = true;
@@ -111,7 +109,7 @@ export default function Editor() {
     editor.commands.setContent(html);
     isUpdatingRef.current = false;
     editor.commands.focus("end");
-  }, [selectedPath, assetsDir]); // reload when note or assetsDir changes
+  }, [selectedPath, contentVersion, assetsDir]);
 
   // Cmd+S
   useEffect(() => {
@@ -135,23 +133,28 @@ export default function Editor() {
             flexDirection: "column",
             alignItems: "center",
             gap: "var(--s5)",
-            animation: "fadeInUp 0.4s cubic-bezier(0.4,0,0.2,1)",
+            animation: "float-in 0.5s cubic-bezier(0.4,0,0.2,1)",
+            padding: "48px 56px",
+            borderRadius: "var(--r5)",
+            background: "var(--bg-card)",
+            border: "1px solid var(--border)",
+            boxShadow: "0 16px 64px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.03)",
           }}
         >
           <div
             style={{
-              width: "72px",
-              height: "72px",
-              borderRadius: "var(--r5)",
-              background: "linear-gradient(135deg, rgba(107,138,253,0.12), rgba(107,138,253,0.04))",
-              border: "1px solid rgba(107,138,253,0.08)",
+              width: "80px",
+              height: "80px",
+              borderRadius: "20px",
+              background: "linear-gradient(135deg, rgba(124,140,245,0.15), rgba(99,102,241,0.06))",
+              border: "1px solid rgba(124,140,245,0.1)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: "0 8px 32px rgba(107,138,253,0.06)",
+              animation: "glow-pulse 3s ease infinite",
             }}
           >
-            <svg width="32" height="32" viewBox="0 0 32 32" fill="none" style={{ color: "var(--accent)" }}>
+            <svg width="36" height="36" viewBox="0 0 32 32" fill="none" style={{ color: "var(--accent)" }}>
               <path
                 d="M16 5C10.5 5 6 9.5 6 15c0 3.5 1.8 6.6 4.5 8.4V27a1.5 1.5 0 001.5 1.5h8A1.5 1.5 0 0021.5 27v-3.6C24.2 21.6 26 18.5 26 15c0-5.5-4.5-10-10-10z"
                 stroke="currentColor" strokeWidth="1.3"
@@ -160,19 +163,16 @@ export default function Editor() {
             </svg>
           </div>
           <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: "var(--s2)" }}>
-            <span style={{ fontSize: "20px", fontWeight: 600, letterSpacing: "-0.03em" }}>
+            <span style={{ fontSize: "22px", fontWeight: 700, letterSpacing: "-0.03em", color: "var(--text-primary)" }}>
               Start capturing your thoughts
             </span>
-            <span style={{ fontSize: "14px", color: "var(--text-secondary)" }}>
+            <span style={{ fontSize: "14px", color: "var(--text-tertiary)", fontWeight: 400 }}>
               Select a note or create a new one
             </span>
           </div>
           <button
             className="empty-cta"
-            onClick={() => {
-              const name = prompt("Note name:");
-              if (name) createNote(name.endsWith(".md") ? name : `${name}.md`);
-            }}
+            onClick={() => setShowCreateInput(true)}
           >
             <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
               <path d="M6.5 2v9M2 6.5h9" />
@@ -184,16 +184,22 @@ export default function Editor() {
         <style>{`
           .empty-cta {
             display: flex; align-items: center; gap: 8px;
-            padding: 10px 22px; font-size: 13px; font-weight: 500;
+            padding: 11px 24px; font-size: 13px; font-weight: 600;
             border-radius: var(--r3); border: none;
-            background: var(--accent); color: #0c0e12; cursor: pointer;
+            background: var(--accent-gradient); color: #0c0e12; cursor: pointer;
+            letter-spacing: -0.01em;
+            box-shadow: 0 4px 16px var(--accent-glow);
+            transition: all 0.2s cubic-bezier(0.4,0,0.2,1);
           }
           .empty-cta:hover {
             background: var(--accent-hover);
-            transform: translateY(-1px);
-            box-shadow: 0 6px 20px var(--accent-glow);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px var(--accent-glow);
           }
-          .empty-cta:active { transform: scale(0.98); box-shadow: none; }
+          .empty-cta:active {
+            transform: scale(0.97) translateY(0);
+            box-shadow: 0 2px 8px var(--accent-glow);
+          }
         `}</style>
       </div>
     );
@@ -208,10 +214,10 @@ export default function Editor() {
       {/* Title bar */}
       <div
         className="flex items-center justify-between shrink-0"
-        style={{ height: "48px", padding: "0 var(--s6)", borderBottom: "1px solid var(--border)" }}
+        style={{ height: "50px", padding: "0 var(--s6)", borderBottom: "1px solid var(--border)" }}
       >
         <div className="flex items-center" style={{ gap: "var(--s3)" }}>
-          <span style={{ fontSize: "13px", fontWeight: 500 }}>{fileName}</span>
+          <span style={{ fontSize: "14px", fontWeight: 600, letterSpacing: "-0.02em" }}>{fileName}</span>
           {isModified && (
             <div style={{
               width: "5px", height: "5px", borderRadius: "50%",
@@ -219,7 +225,7 @@ export default function Editor() {
             }} />
           )}
         </div>
-        <span style={{ fontSize: "12px", color: "var(--text-ghost)" }}>{breadcrumb}</span>
+        <span style={{ fontSize: "11.5px", color: "var(--text-ghost)", letterSpacing: "-0.01em" }}>{breadcrumb}</span>
       </div>
 
       {/* Tiptap editor */}
@@ -232,10 +238,10 @@ export default function Editor() {
       <style>{`
         .tiptap-editor {
           outline: none;
-          color: rgba(236, 239, 246, 0.85);
+          color: rgba(232, 236, 244, 0.85);
           font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
           font-size: 15px;
-          line-height: 1.75;
+          line-height: 1.8;
           caret-color: var(--accent);
         }
         .tiptap-editor p.is-editor-empty:first-child::before {

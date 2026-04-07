@@ -12,9 +12,11 @@ interface NoteStore {
   tree: NoteEntry[];
   selectedPath: string | null;
   content: string;
+  contentVersion: number;
   httpPort: number | null;
   assetsDir: string | null;
   isModified: boolean;
+  showCreateInput: boolean;
 
   loadTree: () => Promise<void>;
   selectNote: (path: string) => void;
@@ -26,15 +28,18 @@ interface NoteStore {
   renameNote: (oldPath: string, newPath: string) => Promise<void>;
   loadHttpPort: () => Promise<void>;
   loadAssetsDir: () => Promise<void>;
+  setShowCreateInput: (show: boolean) => void;
 }
 
 export const useNoteStore = create<NoteStore>((set, get) => ({
   tree: [],
   selectedPath: null,
   content: "",
+  contentVersion: 0,
   httpPort: null,
   assetsDir: null,
   isModified: false,
+  showCreateInput: false,
 
   loadTree: async () => {
     const tree = await invoke<NoteEntry[]>("notes_list");
@@ -55,7 +60,7 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
     invoke<string>("notes_read", { path }).then((content) => {
       // Only update if still on the same note
       if (get().selectedPath === path) {
-        set({ content });
+        set({ content, contentVersion: get().contentVersion + 1 });
       }
     });
   },
@@ -109,4 +114,6 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
     const dir = await invoke<string>("notes_assets_dir");
     set({ assetsDir: dir });
   },
+
+  setShowCreateInput: (show: boolean) => set({ showCreateInput: show }),
 }));
