@@ -134,6 +134,12 @@ pub fn notes_rename(old_path: String, new_path: String) -> Result<(), String> {
     fs::rename(&old, &new).map_err(|e| format!("Cannot rename: {e}"))
 }
 
+/// Get the absolute path to the assets directory
+#[tauri::command]
+pub fn notes_assets_dir() -> Result<String, String> {
+    Ok(assets_dir().to_string_lossy().to_string())
+}
+
 /// Save a base64-encoded image to assets dir, return relative path
 #[tauri::command]
 pub fn notes_save_image(data: String, filename: String) -> Result<String, String> {

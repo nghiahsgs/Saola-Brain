@@ -15,18 +15,23 @@ const turndown = new TurndownService({
 });
 
 /** Convert markdown string to HTML for Tiptap */
-function mdToHtml(md: string): string {
+function mdToHtml(md: string, assetsDir: string | null): string {
   let processed = md;
-  // Convert absolute file paths to Tauri asset URLs for display
+  // Convert absolute file paths to Tauri asset URLs
   processed = processed.replace(
     /!\[([^\]]*)\]\((\/.+?)\)/g,
     (_match, alt, path) => `![${alt}](${convertFileSrc(path)})`
   );
-  // Convert relative ../assets/ paths — keep as-is since we use absolute paths now
-  processed = processed.replace(
-    /!\[([^\]]*)\]\(\.\.\/(assets\/.+?)\)/g,
-    (_match, alt, relPath) => `![${alt}](${relPath})`
-  );
+  // Convert relative ../assets/ paths to absolute using assetsDir
+  if (assetsDir) {
+    processed = processed.replace(
+      /!\[([^\]]*)\]\(\.\.\/(assets\/.+?)\)/g,
+      (_match, alt, relPath) => {
+        const absPath = `${assetsDir}/${relPath.replace("assets/", "")}`;
+        return `![${alt}](${convertFileSrc(absPath)})`;
+      }
+    );
+  }
   return marked.parse(processed, { async: false }) as string;
 }
 
@@ -36,7 +41,7 @@ function htmlToMd(html: string): string {
 }
 
 export default function Editor() {
-  const { selectedPath, content, isModified, updateContent, saveNote, createNote } =
+  const { selectedPath, content, isModified, updateContent, saveNote, createNote, assetsDir, loadAssetsDir } =
     useNoteStore();
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const isUpdatingRef = useRef(false);
@@ -93,15 +98,20 @@ export default function Editor() {
     },
   });
 
+  // Load assets dir on mount
+  useEffect(() => {
+    loadAssetsDir();
+  }, []);
+
   // Load content into editor when note changes
   useEffect(() => {
     if (!editor || !selectedPath) return;
     isUpdatingRef.current = true;
-    const html = mdToHtml(content);
+    const html = mdToHtml(content, assetsDir);
     editor.commands.setContent(html);
     isUpdatingRef.current = false;
     editor.commands.focus("end");
-  }, [selectedPath]); // only on note switch, not on every content change
+  }, [selectedPath, assetsDir]); // reload when note or assetsDir changes
 
   // Cmd+S
   useEffect(() => {

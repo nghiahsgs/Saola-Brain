@@ -13,9 +13,11 @@ interface NoteStore {
   selectedPath: string | null;
   content: string;
   httpPort: number | null;
+  assetsDir: string | null;
   isModified: boolean;
 
   loadTree: () => Promise<void>;
+  startPolling: () => void;
   selectNote: (path: string) => Promise<void>;
   updateContent: (content: string) => void;
   saveNote: () => Promise<void>;
@@ -24,6 +26,7 @@ interface NoteStore {
   deleteNote: (path: string) => Promise<void>;
   renameNote: (oldPath: string, newPath: string) => Promise<void>;
   loadHttpPort: () => Promise<void>;
+  loadAssetsDir: () => Promise<void>;
 }
 
 export const useNoteStore = create<NoteStore>((set, get) => ({
@@ -36,6 +39,11 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
   loadTree: async () => {
     const tree = await invoke<NoteEntry[]>("notes_list");
     set({ tree });
+  },
+
+  // Poll for file changes every 3 seconds (picks up API-created notes)
+  startPolling: () => {
+    setInterval(() => get().loadTree(), 3000);
   },
 
   selectNote: async (path: string) => {
@@ -92,5 +100,11 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
   loadHttpPort: async () => {
     const port = await invoke<number>("http_server_port");
     set({ httpPort: port });
+  },
+
+  assetsDir: null as string | null,
+  loadAssetsDir: async () => {
+    const dir = await invoke<string>("notes_assets_dir");
+    set({ assetsDir: dir });
   },
 }));

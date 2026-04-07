@@ -24,6 +24,7 @@ pub fn run() {
             notes::notes_delete,
             notes::notes_rename,
             notes::notes_save_image,
+            notes::notes_assets_dir,
             http_server::http_server_port,
         ])
         .run(tauri::generate_context!())

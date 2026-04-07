@@ -124,17 +124,18 @@ function TreeNode({
 }
 
 export default function Sidebar() {
-  const { tree, loadTree, createNote, createFolder, deleteNote, renameNote } =
+  const { tree, loadTree, startPolling, createNote, createFolder, deleteNote, renameNote } =
     useNoteStore();
   const [newName, setNewName] = useState("");
   const [showInput, setShowInput] = useState<"note" | "folder" | null>(null);
-  const [inputPrefix, setInputPrefix] = useState(""); // folder path prefix for creating inside folder
+  const [inputPrefix, setInputPrefix] = useState("");
   const [ctxMenu, setCtxMenu] = useState<ContextMenu | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadTree();
-  }, [loadTree]);
+    startPolling();
+  }, []);
 
   // Close context menu on click outside
   useEffect(() => {
