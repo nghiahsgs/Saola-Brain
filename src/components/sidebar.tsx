@@ -124,7 +124,10 @@ function TreeNode({
       className="sidebar-item group"
       data-active={isSelected || undefined}
       style={{ paddingLeft: `${leftPad + 20}px` }}
-      onClick={() => selectNote(entry.path)}
+      onMouseDown={(e) => {
+        // Use mousedown for immediate response — onClick gets swallowed by draggable
+        if (e.button === 0) selectNote(entry.path);
+      }}
       onContextMenu={(e) => onContextMenu(e, entry)}
       draggable
       onDragStart={(e) => {

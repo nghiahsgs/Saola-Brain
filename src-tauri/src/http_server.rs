@@ -108,13 +108,27 @@ fn list_notes_flat(dir: &PathBuf, base: &PathBuf) -> Vec<NoteItem> {
 
 /// Handle a single HTTP request
 fn handle_request(stream: &mut std::net::TcpStream) {
-    let mut buffer = [0u8; 8192];
-    let n = match stream.read(&mut buffer) {
-        Ok(n) => n,
-        Err(_) => return,
-    };
+    // Read request in chunks to handle large bodies (notes can be >8KB)
+    let mut buffer = Vec::new();
+    let mut tmp = [0u8; 8192];
+    loop {
+        match stream.read(&mut tmp) {
+            Ok(0) => break,
+            Ok(n) => {
+                buffer.extend_from_slice(&tmp[..n]);
+                // If we read less than buffer size, likely done
+                if n < tmp.len() {
+                    break;
+                }
+            }
+            Err(_) => break,
+        }
+    }
+    if buffer.is_empty() {
+        return;
+    }
 
-    let request = String::from_utf8_lossy(&buffer[..n]).to_string();
+    let request = String::from_utf8_lossy(&buffer).to_string();
     let (method, path, body) = parse_request(&request);
     let dir = notes_dir();
 
