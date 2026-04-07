@@ -17,8 +17,7 @@ interface NoteStore {
   isModified: boolean;
 
   loadTree: () => Promise<void>;
-  startPolling: () => void;
-  selectNote: (path: string) => Promise<void>;
+  selectNote: (path: string) => void;
   updateContent: (content: string) => void;
   saveNote: () => Promise<void>;
   createNote: (path: string) => Promise<void>;
@@ -34,6 +33,7 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
   selectedPath: null,
   content: "",
   httpPort: null,
+  assetsDir: null,
   isModified: false,
 
   loadTree: async () => {
@@ -41,20 +41,23 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
     set({ tree });
   },
 
-  // Poll for file changes every 3 seconds (picks up API-created notes)
-  startPolling: () => {
-    setInterval(() => get().loadTree(), 3000);
-  },
-
-  selectNote: async (path: string) => {
-    // Auto-save current note if modified
+  selectNote: (path: string) => {
+    // Save current note in background if modified (non-blocking)
     const { isModified, selectedPath } = get();
     if (isModified && selectedPath) {
-      await get().saveNote();
+      invoke("notes_write", { path: selectedPath, content: get().content });
     }
 
-    const content = await invoke<string>("notes_read", { path });
-    set({ selectedPath: path, content, isModified: false });
+    // Set path immediately for instant UI response
+    set({ selectedPath: path, content: "", isModified: false });
+
+    // Load content async
+    invoke<string>("notes_read", { path }).then((content) => {
+      // Only update if still on the same note
+      if (get().selectedPath === path) {
+        set({ content });
+      }
+    });
   },
 
   updateContent: (content: string) => {
@@ -71,7 +74,7 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
   createNote: async (path: string) => {
     await invoke("notes_write", { path, content: "" });
     await get().loadTree();
-    await get().selectNote(path);
+    get().selectNote(path);
   },
 
   createFolder: async (path: string) => {
@@ -102,7 +105,6 @@ export const useNoteStore = create<NoteStore>((set, get) => ({
     set({ httpPort: port });
   },
 
-  assetsDir: null as string | null,
   loadAssetsDir: async () => {
     const dir = await invoke<string>("notes_assets_dir");
     set({ assetsDir: dir });

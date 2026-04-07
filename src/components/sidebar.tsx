@@ -124,7 +124,7 @@ function TreeNode({
 }
 
 export default function Sidebar() {
-  const { tree, loadTree, startPolling, createNote, createFolder, deleteNote, renameNote } =
+  const { tree, loadTree, createNote, createFolder, deleteNote, renameNote } =
     useNoteStore();
   const [newName, setNewName] = useState("");
   const [showInput, setShowInput] = useState<"note" | "folder" | null>(null);
@@ -134,7 +134,10 @@ export default function Sidebar() {
 
   useEffect(() => {
     loadTree();
-    startPolling();
+    // Reload when window regains focus (picks up API-created notes)
+    const onFocus = () => loadTree();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
   }, []);
 
   // Close context menu on click outside
